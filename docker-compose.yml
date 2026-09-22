@@ -1,0 +1,73 @@
+services:
+
+  eureka-server:
+    build: ./eureka-server
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+
+  postgres:
+    image: postgres:16
+    container_name: resolvenow-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: auth_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  auth-service:
+    build: ./auth-service
+    container_name: auth-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      - eureka-server
+      - postgres
+
+  notification-service:
+    build: ./notification-service
+    container_name: notification-service
+    ports:
+      - "8084:8084"
+    depends_on:
+      - eureka-server
+      - postgres
+
+  assignment-service:
+    build: ./assignment-service
+    container_name: assignment-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      - eureka-server
+      - postgres
+      - notification-service
+
+  complaint-service:
+    build: ./complaint-service
+    expose:
+      - "8082"
+    depends_on:
+      - eureka-server
+      - postgres
+      - assignment-service
+      - notification-service
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    ports:
+      - "8000:8000"
+    depends_on:
+      - eureka-server
+      - auth-service
+      - complaint-service
+      - assignment-service
+      - notification-service
+
+volumes:
+  postgres-data:
